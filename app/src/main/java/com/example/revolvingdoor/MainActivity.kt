@@ -1,9 +1,16 @@
 package com.example.revolvingdoor
 
+import android.app.WallpaperManager
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
+import android.util.TypedValue
+import android.view.Display
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,15 +18,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material3.Button
@@ -27,35 +31,50 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.revolvingdoor.ui.theme.RevolvingDoorTheme
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("rd", "onCreate called")
         setContent {
             RevolvingDoorTheme {
-                val result = remember { mutableStateListOf<Uri>() }
+                val (screenWidth, screenHeight) = getDeviceWidthAndHeight()
+                val result = rememberMutableStateListOf<Uri>()
                 val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) {
                     result.addAll(it)
                 }
                 val resultList = result.toList()
+                // WallpaperManager forces activities to be recreated
+                // more info here: https://commonsware.com/blog/2021/10/31/android-12-wallpaper-changes-recreate-activities.html
+                val wallpaperManager = WallpaperManager.getInstance(LocalContext.current)
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TestScreen(pickImages, resultList)
+                    TestScreen(
+                        pickImages = pickImages,
+                        imageList = resultList,
+                        onImageClick = wallpaperManager::setBitmap,
+                        onResetClick = wallpaperManager::clear,
+                        screenHeight = screenHeight,
+                        screenWidth = screenWidth,
+                        )
                 }
             }
         }
@@ -63,7 +82,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TestScreen(pickImages: ManagedActivityResultLauncher<PickVisualMediaRequest, List<@JvmSuppressWildcards Uri>>, imageList: List<Uri>, modifier: Modifier = Modifier) {
+fun TestScreen(
+    pickImages: ManagedActivityResultLauncher<PickVisualMediaRequest, List<@JvmSuppressWildcards Uri>>,
+    imageList: List<Uri>,
+    onImageClick: (Bitmap) -> Unit,
+    onResetClick: () -> Unit,
+    screenHeight: Int,
+    screenWidth: Int,
+    modifier: Modifier = Modifier
+) {
    Column(
        horizontalAlignment = Alignment.CenterHorizontally,
        modifier = modifier.fillMaxSize()
@@ -80,20 +107,43 @@ fun TestScreen(pickImages: ManagedActivityResultLauncher<PickVisualMediaRequest,
            ) {
                items(imageList.size) {photo ->
                    Log.d("rd", imageList[photo].toString())
-                    AsyncImage(
-                        model = imageList[photo],
-                        contentDescription = null,
-                        contentScale = ContentScale.FillBounds,
-                        placeholder = painterResource(R.drawable.missing_image),
-                        modifier = Modifier
-                            .size(150.dp)
-                            .border(BorderStroke(1.dp, Color.Black)),
-                    )
+                   // var image: Drawable? = getDrawable(LocalContext.current.resources, R.drawable.missing_image, LocalContext.current.theme)
+                   val inputStream = LocalContext.current.contentResolver.openInputStream(imageList[photo]) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image) // interesting method to change my drawable res to raw res
+                   // val missingBitmap = BitmapFactory.decodeResource(LocalContext.current.resources, R.drawable.missing_image)
+                   val imageBitmap = BitmapFactory.decodeStream(inputStream)
+                   inputStream.close()
+
+                   val bitmap = Bitmap.createScaledBitmap(imageBitmap, screenWidth, screenHeight, true)
+                   Log.d("rd", "getScreenWidth(): " + screenWidth.toInt())
+                   Log.d("rd", "getScreenHeight(): " + screenHeight.toInt())
+                   AsyncImage (
+                       model = imageList[photo],
+                       contentDescription = null,
+                       contentScale = ContentScale.FillBounds,
+                       placeholder = painterResource(R.drawable.missing_image),
+                       modifier = Modifier
+                           .size(150.dp)
+                           .border(BorderStroke(1.dp, Color.Black))
+                           .clickable(onClick = {
+                               onImageClick(bitmap)
+                           }),
+                   )
                }
            }
        }
 
        Spacer(modifier = Modifier.size(4.dp))
+       Button(
+           onClick = {
+                onResetClick()
+           },
+           modifier = Modifier.weight(1f)
+       ) {
+           Text(
+               text = "Reset wallpaper"
+           )
+       }
+       Spacer(modifier = Modifier.size(16.dp))
        Button(
            onClick = {
                pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -105,4 +155,109 @@ fun TestScreen(pickImages: ManagedActivityResultLauncher<PickVisualMediaRequest,
            )
        }
     }
+}
+
+// https://stackoverflow.com/questions/68885154/using-remembersaveable-with-mutablestatelistof
+@Composable
+fun <T: Any> rememberMutableStateListOf(vararg elements: T): SnapshotStateList<T> {
+    return rememberSaveable(
+        saver = listSaver(
+            save = { stateList ->
+                if (stateList.isNotEmpty()) {
+                    val first = stateList.first()
+                    if (!canBeSaved(first)) {
+                        throw IllegalStateException("${first::class} cannot be saved. By default only types which can be stored in the Bundle class can be saved.")
+                    }
+                }
+                stateList.toList()
+            },
+            restore = { it.toMutableStateList() }
+        )
+    ) {
+        elements.toList().toMutableStateList()
+    }
+}
+
+//@Composable
+//// https://stackoverflow.com/questions/6410364/how-to-scale-bitmap-to-screen-size
+//private fun decodeStream(imageUri: Uri): Bitmap? {
+//    var inputStream = LocalContext.current.contentResolver.openInputStream(imageUri) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image)
+//    //decode image size
+//    val o = BitmapFactory.Options()
+//    o.inJustDecodeBounds = true
+//    BitmapFactory.decodeStream(inputStream, null, o)
+//    //Find the correct scale value. It should be the power of 2.
+//    val requiredSize = 70
+//    var widthTmp = o.outWidth
+//    var heightTmp = o.outHeight
+//    var scale = 1
+//    while (true) {
+//        if (widthTmp / 2 < requiredSize || heightTmp / 2 < requiredSize) break
+//        widthTmp /= 2
+//        heightTmp /= 2
+//        scale*=2
+//    }
+//    Log.d("rd", "scale: " + scale.toString())
+//    inputStream.close()
+//    inputStream = LocalContext.current.contentResolver.openInputStream(imageUri) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image)
+//    //decode with inSampleSize
+//    val o2 = BitmapFactory.Options()
+//    o2.inSampleSize = 4
+//    val output = BitmapFactory.decodeStream(inputStream, null, o2)
+//    inputStream.close()
+//    return output
+//}
+
+@Composable
+fun getScreenHeight(): Int {
+    val density = LocalContext.current.resources.displayMetrics.density
+    Log.d("rd", "ScreenHeightDp: " + LocalConfiguration.current.screenHeightDp.toString())
+    return (LocalConfiguration.current.screenHeightDp * density + 0.5f).toInt()
+}
+
+@Composable
+fun getScreenWidth(): Int {
+    val density = LocalContext.current.resources.displayMetrics.density
+    Log.d("rd", "ScreenWidthDp: " + LocalConfiguration.current.screenWidthDp.toString())
+    return (LocalConfiguration.current.screenWidthDp * density + 0.5f).toInt()
+}
+
+
+//private fun resize(image: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap? {
+//    var imageScaled = image
+//    return if (maxHeight > 0 && maxWidth > 0) {
+//        val width = imageScaled.width
+//        val height = imageScaled.height
+//        val ratioBitmap = width.toFloat() / height.toFloat()
+//        val ratioMax = maxWidth.toFloat() / maxHeight.toFloat()
+//        var finalWidth = maxWidth
+//        var finalHeight = maxHeight
+//        if (ratioMax > ratioBitmap) {
+//            finalWidth = (maxHeight.toFloat() * ratioBitmap).toInt()
+//        } else {
+//            finalHeight = (maxWidth.toFloat() / ratioBitmap).toInt()
+//        }
+//        imageScaled = Bitmap.createScaledBitmap(imageScaled, finalWidth, finalHeight, true)
+//        Log.d("rd", "ratioBitmap: " + ratioBitmap.toString())
+//        Log.d("rd", "finalWidth: " + finalWidth.toString() + " finalHeight: " + finalHeight.toString())
+//
+//        imageScaled
+//    } else {
+//        image
+//    }
+//}
+
+fun Context.toPx(dp: Int): Float = TypedValue.applyDimension(
+    TypedValue.COMPLEX_UNIT_DIP,
+    dp.toFloat(),
+    resources.displayMetrics
+)
+
+@Composable
+private fun getDeviceWidthAndHeight(): Pair<Int, Int>{
+    val metrics = DisplayMetrics()
+    val windowManager = LocalContext.current.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    windowManager.defaultDisplay.getRealMetrics(metrics)
+    return Pair(metrics.widthPixels.toInt(), metrics.heightPixels.toInt())
+
 }
