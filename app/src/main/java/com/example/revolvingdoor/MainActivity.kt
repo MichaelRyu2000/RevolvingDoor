@@ -3,7 +3,9 @@ package com.example.revolvingdoor
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
@@ -35,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.revolvingdoor.ui.theme.RevolvingDoorTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,12 +45,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             RevolvingDoorTheme {
+                val result = remember { mutableStateListOf<Uri>() }
+                val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) {
+                    result.addAll(it)
+                }
+                val resultList = result.toList()
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TestScreen()
+                    TestScreen(pickImages, resultList)
                 }
             }
         }
@@ -55,32 +63,28 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TestScreen(modifier: Modifier = Modifier) {
-    val result = remember { mutableStateListOf<Uri>() }
-    val pickImages = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) {
-        result.addAll(it)
-    }
-
+fun TestScreen(pickImages: ManagedActivityResultLauncher<PickVisualMediaRequest, List<@JvmSuppressWildcards Uri>>, imageList: List<Uri>, modifier: Modifier = Modifier) {
    Column(
        horizontalAlignment = Alignment.CenterHorizontally,
        modifier = modifier.fillMaxSize()
     ) {
-       if (result.isEmpty()) {
+       if (imageList.isEmpty()) {
            Text(
                text = "Please choose some pictures",
                modifier = Modifier.weight(4f)
            )
        } else {
-           val imagesList = result.toList()
            LazyVerticalGrid(
-               columns= GridCells.Fixed(3),
+               columns= GridCells.Fixed(2),
                modifier = Modifier.weight(4f)
            ) {
-               items(imagesList.size) {photo ->
-                    Image(
-                        painterResource(photo),
+               items(imageList.size) {photo ->
+                   Log.d("rd", imageList[photo].toString())
+                    AsyncImage(
+                        model = imageList[photo],
                         contentDescription = null,
                         contentScale = ContentScale.FillBounds,
+                        placeholder = painterResource(R.drawable.missing_image),
                         modifier = Modifier
                             .size(150.dp)
                             .border(BorderStroke(1.dp, Color.Black)),
