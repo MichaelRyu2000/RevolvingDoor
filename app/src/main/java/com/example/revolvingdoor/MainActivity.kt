@@ -2,9 +2,11 @@ package com.example.revolvingdoor
 
 import android.app.WallpaperManager
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
@@ -31,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -44,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.revolvingdoor.services.TimerService
 import com.example.revolvingdoor.ui.theme.RevolvingDoorTheme
 
 
@@ -91,6 +96,8 @@ fun TestScreen(
     screenWidth: Int,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current;
+    val serviceStatus = rememberSaveable { mutableStateOf(false) }
    Column(
        horizontalAlignment = Alignment.CenterHorizontally,
        modifier = modifier.fillMaxSize()
@@ -106,16 +113,15 @@ fun TestScreen(
                modifier = Modifier.weight(4f)
            ) {
                items(imageList.size) {photo ->
-                   Log.d("rd", imageList[photo].toString())
-                   // var image: Drawable? = getDrawable(LocalContext.current.resources, R.drawable.missing_image, LocalContext.current.theme)
-                   val inputStream = LocalContext.current.contentResolver.openInputStream(imageList[photo]) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image) // interesting method to change my drawable res to raw res
-                   // val missingBitmap = BitmapFactory.decodeResource(LocalContext.current.resources, R.drawable.missing_image)
-                   val imageBitmap = BitmapFactory.decodeStream(inputStream)
-                   inputStream.close()
-
-                   val bitmap = Bitmap.createScaledBitmap(imageBitmap, screenWidth, screenHeight, true)
-                   Log.d("rd", "getScreenWidth(): " + screenWidth.toInt())
-                   Log.d("rd", "getScreenHeight(): " + screenHeight.toInt())
+//                   // var image: Drawable? = getDrawable(LocalContext.current.resources, R.drawable.missing_image, LocalContext.current.theme)
+//                   val inputStream = LocalContext.current.contentResolver.openInputStream(imageList[photo]) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image) // interesting method to change my drawable res to raw res
+//                   // val missingBitmap = BitmapFactory.decodeResource(LocalContext.current.resources, R.drawable.missing_image)
+//                   val imageBitmap = BitmapFactory.decodeStream(inputStream)
+//                   inputStream.close()
+//
+//                   val bitmap = Bitmap.createScaledBitmap(imageBitmap, screenWidth, screenHeight, true)
+//                   Log.d("rd", "getScreenWidth(): " + screenWidth.toInt())
+//                   Log.d("rd", "getScreenHeight(): " + screenHeight.toInt())
                    AsyncImage (
                        model = imageList[photo],
                        contentDescription = null,
@@ -124,20 +130,47 @@ fun TestScreen(
                        modifier = Modifier
                            .size(150.dp)
                            .border(BorderStroke(1.dp, Color.Black))
-                           .clickable(onClick = {
-                               onImageClick(bitmap)
-                           }),
+//                           .clickable(onClick =
+//                               onImageClick(bitmap)
+//                           }),
                    )
                }
            }
        }
-
        Spacer(modifier = Modifier.size(4.dp))
        Button(
            onClick = {
-                onResetClick()
+               if (serviceStatus.value) {
+                   serviceStatus.value = !serviceStatus.value
+                   context.stopService(Intent(context, TimerService::class.java))
+               } else {
+                   Log.d("rd", "serviceStatus false and trying to start service intent")
+                   var stringList: MutableList<String> = mutableListOf<String>()
+                   imageList.forEach {
+                       stringList.add(it.toString())
+                   }
+                   Log.d("rd", "stringList size: " + stringList.size.toString())
+                   serviceStatus.value = !serviceStatus.value
+                   val intent = Intent(context, TimerService::class.java);
+                   intent.putExtra("screenHeight", screenHeight )
+                   intent.putExtra("screenWidth", screenWidth)
+                   intent.putExtra("uriList", stringList.toTypedArray())
+                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                       context.startService(intent)
+                   }
+               }
            },
-           modifier = Modifier.weight(1f)
+           modifier = Modifier.weight(0.5f)
+       ) {
+           Text(text = "Display Wallpaper")
+       }
+       Spacer(modifier = Modifier.size(4.dp))
+       Button(
+           onClick = {
+               context.stopService(Intent(context, TimerService::class.java))
+               onResetClick()
+           },
+           modifier = Modifier.weight(0.5f)
        ) {
            Text(
                text = "Reset wallpaper"
@@ -148,7 +181,7 @@ fun TestScreen(
            onClick = {
                pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
            },
-           modifier = Modifier.weight(1f)
+           modifier = Modifier.weight(0.5f)
        ) {
            Text(
                text = "Choose picture(s)"
@@ -208,19 +241,19 @@ fun <T: Any> rememberMutableStateListOf(vararg elements: T): SnapshotStateList<T
 //    return output
 //}
 
-@Composable
-fun getScreenHeight(): Int {
-    val density = LocalContext.current.resources.displayMetrics.density
-    Log.d("rd", "ScreenHeightDp: " + LocalConfiguration.current.screenHeightDp.toString())
-    return (LocalConfiguration.current.screenHeightDp * density + 0.5f).toInt()
-}
-
-@Composable
-fun getScreenWidth(): Int {
-    val density = LocalContext.current.resources.displayMetrics.density
-    Log.d("rd", "ScreenWidthDp: " + LocalConfiguration.current.screenWidthDp.toString())
-    return (LocalConfiguration.current.screenWidthDp * density + 0.5f).toInt()
-}
+//@Composable
+//fun getScreenHeight(): Int {
+//    val density = LocalContext.current.resources.displayMetrics.density
+//    Log.d("rd", "ScreenHeightDp: " + LocalConfiguration.current.screenHeightDp.toString())
+//    return (LocalConfiguration.current.screenHeightDp * density + 0.5f).toInt()
+//}
+//
+//@Composable
+//fun getScreenWidth(): Int {
+//    val density = LocalContext.current.resources.displayMetrics.density
+//    Log.d("rd", "ScreenWidthDp: " + LocalConfiguration.current.screenWidthDp.toString())
+//    return (LocalConfiguration.current.screenWidthDp * density + 0.5f).toInt()
+//}
 
 
 //private fun resize(image: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap? {
