@@ -21,11 +21,6 @@ class TimerService : IntentService("TimerService") { // SERVICE IS A CONTEXT!
     private var screenHeight = 0
     private var screenWidth = 0
     private var randoNumber = 0
-//
-//    override fun onCreate() {
-//        super.onCreate()
-//        startForeground(1, Notification());
-//    }
 
     @Deprecated("Deprecated in Java")
     override fun onHandleIntent(intent: Intent?) {
@@ -41,8 +36,7 @@ class TimerService : IntentService("TimerService") { // SERVICE IS A CONTEXT!
             screenHeight = intent.extras!!.getInt("screenHeight")
             screenWidth = intent.extras!!.getInt("screenWidth")
         }
-        randoNumber = (0..10000).random()
-        Log.d("rd", "Random number is: " + randoNumber.toString())
+
         runCatching {
             var index = 0
             while(true) {
@@ -79,14 +73,3 @@ class TimerService : IntentService("TimerService") { // SERVICE IS A CONTEXT!
     }
 
 }
-
-//private fun isMyServiceRunning(serviceClass: Class<*>): Boolean {
-//    val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager?
-//    for (service in manager!!.getRunningServices(Int.MAX_VALUE)) {
-//        if (serviceClass.name == service.service.className) {
-//            return true
-//        }
-//    }
-//    return false
-//}
-//

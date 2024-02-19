@@ -75,4 +75,5 @@ dependencies {
 
     // coil
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("androidx.work:work-runtime:2.9.0")
 }
