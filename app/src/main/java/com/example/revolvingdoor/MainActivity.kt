@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
-// import android.util.TypedValue
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -67,8 +66,6 @@ class MainActivity : ComponentActivity() {
                 val resultList = result.toList()
                 // WallpaperManager forces activities to be recreated
                 // more info here: https://commonsware.com/blog/2021/10/31/android-12-wallpaper-changes-recreate-activities.html
-               // val wallpaperManager = WallpaperManager.getInstance(LocalContext.current)
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -196,81 +193,6 @@ fun <T: Any> rememberMutableStateListOf(vararg elements: T): SnapshotStateList<T
         elements.toList().toMutableStateList()
     }
 }
-
-//@Composable
-//// https://stackoverflow.com/questions/6410364/how-to-scale-bitmap-to-screen-size
-//private fun decodeStream(imageUri: Uri): Bitmap? {
-//    var inputStream = LocalContext.current.contentResolver.openInputStream(imageUri) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image)
-//    //decode image size
-//    val o = BitmapFactory.Options()
-//    o.inJustDecodeBounds = true
-//    BitmapFactory.decodeStream(inputStream, null, o)
-//    //Find the correct scale value. It should be the power of 2.
-//    val requiredSize = 70
-//    var widthTmp = o.outWidth
-//    var heightTmp = o.outHeight
-//    var scale = 1
-//    while (true) {
-//        if (widthTmp / 2 < requiredSize || heightTmp / 2 < requiredSize) break
-//        widthTmp /= 2
-//        heightTmp /= 2
-//        scale*=2
-//    }
-//    Log.d("rd", "scale: " + scale.toString())
-//    inputStream.close()
-//    inputStream = LocalContext.current.contentResolver.openInputStream(imageUri) ?: LocalContext.current.resources.openRawResource(+ R.drawable.missing_image)
-//    //decode with inSampleSize
-//    val o2 = BitmapFactory.Options()
-//    o2.inSampleSize = 4
-//    val output = BitmapFactory.decodeStream(inputStream, null, o2)
-//    inputStream.close()
-//    return output
-//}
-
-//@Composable
-//fun getScreenHeight(): Int {
-//    val density = LocalContext.current.resources.displayMetrics.density
-//    Log.d("rd", "ScreenHeightDp: " + LocalConfiguration.current.screenHeightDp.toString())
-//    return (LocalConfiguration.current.screenHeightDp * density + 0.5f).toInt()
-//}
-//
-//@Composable
-//fun getScreenWidth(): Int {
-//    val density = LocalContext.current.resources.displayMetrics.density
-//    Log.d("rd", "ScreenWidthDp: " + LocalConfiguration.current.screenWidthDp.toString())
-//    return (LocalConfiguration.current.screenWidthDp * density + 0.5f).toInt()
-//}
-
-
-//private fun resize(image: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap? {
-//    var imageScaled = image
-//    return if (maxHeight > 0 && maxWidth > 0) {
-//        val width = imageScaled.width
-//        val height = imageScaled.height
-//        val ratioBitmap = width.toFloat() / height.toFloat()
-//        val ratioMax = maxWidth.toFloat() / maxHeight.toFloat()
-//        var finalWidth = maxWidth
-//        var finalHeight = maxHeight
-//        if (ratioMax > ratioBitmap) {
-//            finalWidth = (maxHeight.toFloat() * ratioBitmap).toInt()
-//        } else {
-//            finalHeight = (maxWidth.toFloat() / ratioBitmap).toInt()
-//        }
-//        imageScaled = Bitmap.createScaledBitmap(imageScaled, finalWidth, finalHeight, true)
-//        Log.d("rd", "ratioBitmap: " + ratioBitmap.toString())
-//        Log.d("rd", "finalWidth: " + finalWidth.toString() + " finalHeight: " + finalHeight.toString())
-//
-//        imageScaled
-//    } else {
-//        image
-//    }
-//}
-
-//fun Context.toPx(dp: Int): Float = TypedValue.applyDimension(
-//    TypedValue.COMPLEX_UNIT_DIP,
-//    dp.toFloat(),
-//    resources.displayMetrics
-//)
 
 @Composable
 private fun getDeviceWidthAndHeight(): Pair<Int, Int>{
