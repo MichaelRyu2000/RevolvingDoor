@@ -3,7 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
+        android:name=".WallpaperApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -25,6 +27,7 @@
             </intent-filter>
         </activity>
         <service android:name="com.example.revolvingdoor.services.TimerService" />
+        <service android:name=".services.WallpaperService" />
     </application>
 
 </manifest>
